@@ -4,7 +4,137 @@
 Class for handling interaction with a Koden RADARpc
 
 Radar does 10 revolutions in 22.6s (~2.25s per revolution)
+
+// Gains [0:10:90,99,'auto']
+// Rsponse bytes [20] (auto off=0 or on=01) and byte [21] (value)
+GAINS = [
+24:47:00:0d
+24:47:0a:0d
+24:47:14:0d
+24:47:1e:0d
+24:47:28:0d
+24:47:32:0d
+24:47:3c:0d
+24:47:46:0d
+24:47:50:0d
+24:47:5a:0d
+24:47:63:0d
+24:67:11:0d
+
+// Seas [0:10:90,99,'auto']
+// Rsponse bytes [26] (auto off=00 or on=02) and byte [27] (value)
+24:53:00:0d
+24:53:0a:0d
+24:53:14:0d
+24:53:1e:0d
+24:53:28:0d
+24:53:32:0d
+24:53:3c:0d
+24:53:46:0d
+24:53:50:0d
+24:53:5a:0d
+24:53:63:0d
+24:80:22:0d
+
+// Rain [0:10:90,99]
+// Rsponse bytes [24] (value)
+26:46:00:0d
+26:46:0a:0d
+26:46:14:0d
+26:46:1e:0d
+26:46:28:0d
+26:46:32:0d
+26:46:3c:0d
+26:46:46:0d
+26:46:50:0d
+26:46:5a:0d
+26:46:63:0d
+
+// Short/Long Pulse
+// Response bytes [18] (long=01, short=00)
+Long_Pulse  = 26:a4:01:0d
+Short_Pulse = 26:a4:00:0d 
+
 """
+
+UDP_IP = "192.168.0.1"
+UDP_PORT = 10001
+MESSAGE_01 = '\x26\xa7\x11\x0d'        # Sent every 5 seconds in standby
+MESSAGE_02 = '\x26\x74\x11\x0d'  	   # Sent when turning on scanning
+MESSAGE_03 = '\x26\xab\x11\x0d'        # Sent every 5 seconds while scanning
+MESSAGE_04 = '\x26\xaa\x00\x00\x0d'    # Sent before turning off scanning (?)
+MESSAGE_05 = '\x26\x74\x00\x0d'        # Sent when turning off scanning
+MESSAGE_06 = '\x24\x80\x22\x0d'        # Auto-sea turned on
+MESSAGE_07 = '\x24\x67\x11\x0d'        # Auto-gain turned on
+
+
+RANGES = [
+'\x26\x20\x00\xe7\x0d',     # 1/8 - 231m
+'\x26\x20\x01\xcf\x0d',     # 1/4 - 463m
+'\x26\x20\x03\x9e\x0d',     # 1/2 - 926m
+'\x26\x20\x05\x6d\x0d',     # 3/4 - 1389m
+'\x26\x20\x07\x3c\x0d',     # 1.0 - 1852m
+'\x26\x20\x0a\xda\x0d',     # 1.5 - 2778m
+'\x26\x20\x0e\x78\x0d',     # 2.0 - 2704m
+'\x26\x20\x15\xb4\x0d',     # 3.0 - 5556m
+'\x26\x20\x1c\xf0\x0d',     # 4.0 - 7408m
+'\x26\x20\x2b\x68\x0d',     # 6.0 - 11112m
+'\x26\x20\x39\xe0\x0d',     # 8.0 - 14816m
+'\x26\x20\x56\xd0\x0d',     # 12 - 22224m
+'\x26\x20\x73\xc0\x0d',     # 16 - 29632m
+'\x26\x20\xad\xa0\x0d',     # 24 - 44448m
+'\x26\x20\xe7\x80\x0d',     # 32 - 59264m
+'\x26\x21\x04\x70\x0d',]    # 36 - 66672m
+
+"""
+# Equation to get range in meters:
+for R in RANGES:
+    dist_meters = int(R[1:4].encode('hex'),16)-2097152
+    dist_nm = dist_meters/1852.0
+    print("%i m, %f nm"%(dist_meters, dist_nm))
+
+Range index number is returned in the bytes [16] & [17] of the string from the radar
+"""
+
+# STARTUP:
+MESSAGES = [
+'\x26\xfe\xff\xff\xff\x00\x0d',
+'\x26\xff\x11\x0d',
+'\x24\x4e\x11\x0d',
+'\x26\xfe\xff\xff\xff\x00\x0d',
+'\x26\xff\x11\x0d',
+'\x26\x72\xff\x0d',
+'\x26\xff\x11\x0d',
+'\x26\x9a\x11\x0d',
+'\x26\xad\x02\x0d',
+'\x26\xac\x00\x0d',
+'\x26\xa5\x00\x0d',
+'\x26\x99\x11\x0d',
+'\x24\x41\x22\x0d',
+'\x26\x88\x04\x0d',
+'\x26\x85\x55\x0d',
+'\x24\x67\x00\x0d',
+'\x26\x82\x08\x0d',
+'\x26\x81\x07\x0d',
+'\x24\x80\x00\x0d',
+'\x26\x84\x0a\x0d',
+'\x26\x83\x0a\x0d',
+'\x26\x87\x07\x0d',
+'\x26\x30\x03\xd3\x0d',
+'\x26\x9c\x00\x00\x00\x00\x0d',
+'\x26\x44\xa5\x0d',
+'\x26\x20\x01\xcf\x0d',
+'\x24\x47\x32\x0d',
+'\x24\x53\x14\x0d',
+'\x26\x46\x32\x0d',
+'\x26\x49\x33\x0d',
+'\x26\x45\x00\x0d',
+'\x26\xa4\x00\x0d',
+'\x24\x47\x32\x0d',
+'\x24\x53\x14\x0d',
+'\x26\x46\x32\x0d',
+'\x26\x49\x33\x0d',
+]
 
 import socket
 import sys
