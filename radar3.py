@@ -409,6 +409,7 @@ class KodenRadarPC():
     def input_loop(self):
         while True:
             i = raw_input('Enter a command ("h" for help):')
+            time.sleep(1)
             if i == "h":
                 self.print_help()
             elif i == "q":
