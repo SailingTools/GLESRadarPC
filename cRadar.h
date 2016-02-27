@@ -1,34 +1,39 @@
 /****************************************************************************
- * A basic standalone implementation of pyRadar using wxWidgets and OpenGL(ES)
+ * A basic standalone implementation of pyRadar using OpenGL(ES)
  * for fast rendering of the Radar
   ***************************************************************************
  */
 
-using namespace std;
-
 pthread_t recvThread;
+pthread_t inThread;
+pthread_t logThread;
+pthread_t drawThread;
 
-class radarControl
-{
-public:
-    void makeConnection(char ip_address[], int portNum);
-    void send(char *msg, int nBytes);
-    int recieve(void);
-    void setRange(int range);
+char recv_buffer[3000];
+char hex_buffer[9000];
 
-    radarControl(char ip_address[], int portNum);
-    ~radarControl(void);
-    
-private:
-    int clientSocket, portNum, nBytes;
-    bool scanning;
-    std::clock_t last_ping;
-    char hex_buffer[3072];
-    char recv_buffer[1024];
-    struct sockaddr_in serverAddr;
-    socklen_t addr_size;
+int clientSocket, portNum, nBytes;
+struct sockaddr_in serverAddr;
+socklen_t addr_size;
+int scanning;
+time_t last_ping;
+int run_loops;
 
-    void recieveLoop();
-    void pinger();
-    char* hexString(char *buf, int size);
-};
+void Init(char ip_address[], int portNum);
+void *recieveLoop(void *arg);
+int recieve();
+void send(char *msg, int nBytes);
+char* hexString(char *buf, int size);
+void *inputLoop(void *arg);
+void main_loop();
+void makeConnection(char ip_address[], int portNum);
+void setRange(int range);
+extern "C" void pingRadar();
+
+void *logWindow(void *arg);
+extern "C" void *drawWindow(void *arg);
+//extern "C" {
+//  #include "esUtil.h"
+//}
+
+
