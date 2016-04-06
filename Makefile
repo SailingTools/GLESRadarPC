@@ -23,4 +23,4 @@ clean:
 #	gcc ${COMMONSRC} ${CH02SRC} -o $@ ${INCDIR} ${LIBS}
 
 ./cRadar: ${COMMONSRC} ${COMMONHDR} ${SRC}
-	gcc ${COMMONSRC} ${SRC} -o $@ ${INCDIR} ${LIBS}
+	gcc -pg ${COMMONSRC} ${SRC} -o $@ ${INCDIR} ${LIBS}

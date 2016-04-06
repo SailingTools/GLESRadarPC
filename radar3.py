@@ -67,6 +67,8 @@ MESSAGE_05 = '\x26\x74\x00\x0d'        # Sent when turning off scanning
 MESSAGE_06 = '\x24\x80\x22\x0d'        # Auto-sea turned on
 MESSAGE_07 = '\x24\x67\x11\x0d'        # Auto-gain turned on
 
+MESSAGE_08 = '\x26\x61\x05\x0d'	       		    # Recieved when warming up
+MESSAGE_09 = '\x23\xA7\x00\x0D\x8E\x00\x06\xDF\x0D' # Recieved when response to ping in standby mode
 
 RANGES = [
 '\x26\x20\x00\xe7\x0d',     # 1/8 - 231m
