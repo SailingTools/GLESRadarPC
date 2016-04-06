@@ -15,7 +15,7 @@ char hex_buffer[9000];
 int clientSocket, portNum, nBytes;
 struct sockaddr_in serverAddr;
 socklen_t addr_size;
-int scanning;
+//int scanning;
 time_t last_ping;
 int run_loops;
 
@@ -39,6 +39,9 @@ void setRain(int value);
 void setSea(int value);
 void setPulse(int value);
 
+void setIntervalScan(int value);
+void setIntervalWait(int value);
+
 void *logWindow(void *arg);
 extern "C" void *drawWindow(void *arg);
 //extern "C" {
@@ -46,13 +49,15 @@ extern "C" void *drawWindow(void *arg);
 //}
 
 typedef struct {
-    unsigned short  range_index; //16-17
-    unsigned char   long_pulse; //18
-    unsigned char   gain_auto; //20
-    unsigned char   gain_value; //21
-    unsigned char   rain_value; //24
-    unsigned char   sea_auto; //26
-    unsigned char   sea_value; //27
+    unsigned short  range_index;
+    unsigned char   long_pulse;
+    unsigned char   gain_auto;
+    unsigned char   gain_value;
+    unsigned char   rain_value;
+    unsigned char   sea_auto;
+    unsigned char   sea_value;
+    unsigned int    interval_wait;
+    unsigned int    interval_scan;
 } radar_settings;
 
 typedef struct {

@@ -32,6 +32,7 @@ extern "C" {
 #define UDP_PORT 10001
 
 radar_settings gset;
+time_t last_onoff;
 
 void error(const char *msg)
 {
@@ -78,13 +79,13 @@ int recieve()
     }
     //printf("Got %i bytes: %s\n", nBytes, recv_buffer);
     if (nBytes < 1000) {
-        printf("<- Recieved %i bytes: %s\n", nBytes, hexString(recv_buffer, nBytes));
+        //printf("<- Recieved %i bytes: %s\n", nBytes, hexString(recv_buffer, nBytes));
     } else if (nBytes == 1192) {
         //printf("<- Recieved %i bytes\n", nBytes);
         // Copy the recv_buffer data into the packet structure
         memcpy(&packet, recv_buffer, sizeof(radar_scanline_pkt));
 
-        //get_settings(&packet);
+        get_settings(&packet);
 
         //printf("Copying to global buffer at angle %i\n", packet.angle);
         // Copy the scanline data into the global scan buffer
@@ -96,7 +97,7 @@ int recieve()
 
 void get_settings(radar_scanline_pkt *packet)
 {
-    gset.range_index = packet->range_index;
+    gset.range_index = (packet->range_index)^256;
     gset.long_pulse  = packet->long_pulse;
     gset.gain_auto   = packet->gain_auto;
     gset.gain_value  = packet->gain_value;
@@ -115,39 +116,55 @@ void *inputLoop(void *arg)
     printf("Starting Input Loop\n");
     while (run_loops)
     {
-        printf("Enter a command \n");
+        printf("Enter a command (h for help)\n");
         fgets(key,10,stdin);
 
         switch(key[0]) {
             case 'h':
                 printf("Help commands... \n");
                 print_help();
+                break;
             case 'q':
                 printf("Quitting...\n");
                 run_loops = 0;
                 break;
             case 's':
-                printf("Toggling Scanning... \n");
                 toggle_scanning();
+                break;
             case 'r':
                 p = strchr(key, ' ');
                 setRange(atoi(p));
+                break;
             case 'g':
                 p = strchr(key, ' ');
                 setGain(atoi(p));
+                break;
             case 'c':
                 p = strchr(key, ' ');
                 setSea(atoi(p));
+                break;
             case 'a':
                 p = strchr(key, ' ');
                 setRain(atoi(p));
+                break;
             case 'p':
                 p = strchr(key, ' ');
                 setPulse(atoi(p));
+                break;
+            case 'i':
+                p = strchr(key, ' ');
+                setIntervalScan(atoi(p));
+                break;
+            case 'w':
+                p = strchr(key, ' ');
+                setIntervalWait(atoi(p));
+                break;
             case 'd':
                 print_settings();
+                break;
             default:
                 printf("Command not found\n");
+                break;
         }        
     };
     printf("Quitting input loop\n");
@@ -155,6 +172,7 @@ void *inputLoop(void *arg)
 
 void print_help()
 {
+    printf("/*===================*/\n");
     printf("Help Commands:\n");
     printf("q = Quit\n");
     printf("s = Toggle (start/stop) Scanning\n");
@@ -163,21 +181,30 @@ void print_help()
     printf("c [%]= Set Sea to percent\n");
     printf("a [%]= Set Rain to percent\n");
     printf("p [0|1]= Set Pulse to 0 or 1\n");
+
+    printf("i [seconds]= Set Interval Scan Time (seconds)\n");
+    printf("w [seconds]= Set Interval Wait Time (seconds)\n");
+    printf("/*===================*/\n");
 }
 
 void print_settings()
 {
-    printf("Current Settings:\n");
+    printf("/*===================*/\n");
+    printf("CURRENT SETTINGS:\n");
     printf("Range = %i\n", gset.range_index);
-    printf("Gain  = %i\n", gset.gain_value);
-    printf("Sea   = %i\n", gset.sea_value);
+    printf("Gain  = %i [auto=%i]\n", gset.gain_value, gset.gain_auto);
+    printf("Sea  = %i [auto=%i]\n", gset.sea_value, gset.sea_auto);
     printf("Rain  = %i\n", gset.rain_value);
     printf("Pulse = %i\n", gset.long_pulse);
+
+    printf("Interval Scan = %i seconds\n", gset.interval_scan);
+    printf("Interval Wait = %i seconds\n", gset.interval_wait);
+    printf("/*===================*/\n");
 }
 
 void send(char *msg, int nBytes)
 {
-    printf("-> Sending %i bytes: %s\n", nBytes, hexString(msg, nBytes));
+    //printf("-> Sending %i bytes: %s\n", nBytes, hexString(msg, nBytes));
     sendto(clientSocket, msg, nBytes, 0, (struct sockaddr *)&serverAddr, addr_size); 
 }
 
@@ -273,12 +300,26 @@ void setPulse(int value)
     send(msg, 4);
 }
 
+void setIntervalScan(int value)
+{
+    printf("Setting Interval Scan Time to %i seconds... \n", value);
+    gset.interval_scan = value;
+}
+
+void setIntervalWait(int value)
+{
+    printf("Setting wait time between Interval Scan to %i seconds... \n", value);
+    gset.interval_wait = value;
+}
+
 void start_radar()
 {
     printf("Starting Scanning\n");
     char msg[] = "\x26\x74\x11\x0d";
     scanning = 1;
     send(msg, 4);
+
+    last_onoff = time(NULL);
 }
 
 void stop_radar()
@@ -287,6 +328,8 @@ void stop_radar()
     char msg[] = "\x26\x74\x00\x0d";
     scanning = 0;
     send(msg, 4);
+    
+    last_onoff = time(NULL);
 }
 
 void toggle_scanning()
@@ -313,6 +356,15 @@ void pingRadar()
             char msg[5] = "\x26\xab\x11\x0d";
         send(msg, 4);
         last_ping = now;
+    };
+
+    /* Auto Start/Stop the radar if set*/
+    if (gset.interval_scan > 0 ){
+      if ( scanning == 0 ) {
+        if ((now - last_onoff) > gset.interval_wait){ start_radar(); };
+      } else {
+        if ((now - last_onoff) > gset.interval_scan){ stop_radar(); };
+      };
     };
 }
 
@@ -392,10 +444,10 @@ void radarInit(char ip_address[], int portNum)
     int s = sizeof(global_scan_buffer);
     for (i=0; i<s; i++) { 
         global_scan_buffer[i] = 255.0*rand()/RAND_MAX; 
-    };
+    };*/
+
     last_ping = time(NULL);
     scanning = 0;
-    */
 
     /* Open a connection to the server */
     makeConnection(ip_address, portNum);
@@ -409,22 +461,15 @@ void radarInit(char ip_address[], int portNum)
     /* Send the initialization commands */
     initialize_radar();
 
-    /* Send some data to the radar every 5 seconds */
-    //char msg[] = "\x26\xa7\x11\x0d";
-    //send(msg, 4);
+    /* Set parameters for auto-scanning */
+    gset.interval_wait = 600;
+    gset.interval_scan = 0;
+    last_onoff = time(NULL);
 
-    //main_loop();
+    /* Start the drawing loop*/
     drawWindow(0);
 
-    /*Receive message from server*/
-    //recieve();
 
-    /* Test the range set function */
-    //int ranges[5] = {231, 463, 926, 1389, 66672};
-    //for (i = 0; i < 5; i++)
-    //{
-    //    setRange(ranges[i]);
-    //}
 }
 
 

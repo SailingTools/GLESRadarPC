@@ -357,11 +357,15 @@ void Draw ( ESContext *esContext )
         eglSurfaceAttrib ( esContext->eglDisplay, esContext->eglSurface, EGL_SWAP_BEHAVIOR,  EGL_BUFFER_PRESERVED );
    };
 
-   // Clear the color buffer
-   //glClear ( GL_COLOR_BUFFER_BIT );
+   if ( (scanning == 1) | (first_draw == 1) )
+   {
+    if (first_draw == 1) { first_draw = 0; };
+    
+    // Clear the color buffer
+    //glClear ( GL_COLOR_BUFFER_BIT );
 
-   // Use the program object
-   glUseProgram ( userData->programObject );
+    // Use the program object
+    glUseProgram ( userData->programObject );
 
     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, blob_verts);
     glEnableVertexAttribArray ( 0 );
@@ -384,7 +388,6 @@ void Draw ( ESContext *esContext )
         current_angle = 0;
     };
     
-
     /* Draw full scan buffer 
     float angle;
     float ca;
@@ -445,6 +448,11 @@ void Draw ( ESContext *esContext )
     };*/
     DrawLines();
 
+   } else {
+       // Sleep in order to reduce loop CPU usage
+       usleep(500000);
+   };
+
    // Ping the radar
    pingRadar();
 
@@ -456,6 +464,7 @@ void *drawWindow(void *arg)
     int i, s = 0;
     start = time(NULL);
     current_angle = 0;
+    first_draw = 1;
 
     // Create the commonly used stencils
     int n_blobs = 256*512;
